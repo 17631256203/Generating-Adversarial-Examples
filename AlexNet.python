@@ -1,0 +1,63 @@
+from tensorflow.keras.utils import plot_model
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import tensorflow as tf
+import numpy as np
+import pandas as pd
+import tensorflow.keras.datasets.mnist as mnist
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv2D,Dropout,MaxPooling2D,Flatten,Dense
+
+dataset=mnist.load_data()   
+(X_train,Y_train),(X_test,Y_test)=dataset
+X_train=X_train.reshape(-1,28,28,1)
+#[None,width,height,channels]
+X_test=X_test.reshape(-1,28,28,1)   
+
+X_train = X_train/255.0
+X_test = X_test/255.0
+
+Y_train = np.eye(10)[Y_train]
+Y_test = np.eye(10)[Y_test]
+
+Alex_model=Sequential()
+Alex_model.add(Conv2D(96,(11,11),strides=(2,2),input_shape=(28,28,1),
+                padding='same',activation='relu',kernel_initializer='uniform'))  
+Alex_model.add(MaxPooling2D(pool_size=(3,3),strides=(2,2)))  
+Alex_model.add(Conv2D(256,(5,5),strides=(1,1),padding='same',activation='relu',kernel_initializer='uniform'))  
+Alex_model.add(MaxPooling2D(pool_size=(3,3),strides=(2,2)))  
+Alex_model.add(Conv2D(384,(3,3),strides=(1,1),padding='same',activation='relu',kernel_initializer='uniform'))  
+Alex_model.add(Conv2D(384,(3,3),strides=(1,1),padding='same',activation='relu',kernel_initializer='uniform'))  
+Alex_model.add(Conv2D(256,(3,3),strides=(1,1),padding='same',activation='relu',kernel_initializer='uniform'))  
+Alex_model.add(MaxPooling2D(pool_size=(2,2),strides=(2,2)))  
+Alex_model.add(Flatten())  
+Alex_model.add(Dense(2048,activation='relu'))  
+Alex_model.add(Dropout(0.5))  
+Alex_model.add(Dense(2048,activation='relu'))  
+Alex_model.add(Dropout(0.5))  
+Alex_model.add(Dense(10,activation='softmax')) 
+#打印参数
+print(Alex_model.summary())
+
+#编译模型
+Alex_model.compile(optimizer=tf.keras.optimizers.Adam(),loss='categorical_crossentropy',metrics=['accuracy'])
+Alex_model.fit(x=X_train,y=Y_train,batch_size=128,epochs=20,validation_data = (X_test,Y_test))
+
+#模型评估
+loss,acc=Alex_model.evaluate(x=X_test,y=Y_test,verbose= 0)
+print("loss:{}===acc:{}".format(loss,acc))
+
+Alex_model.save("E:/model_save/AlexNet-MNIST.h5")
+
+
+
+
+
+
+
+
+
+
+
+
+
