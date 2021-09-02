@@ -1,0 +1,153 @@
+from tensorflow.keras.utils import plot_model
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import tensorflow as tf
+import numpy as np
+import pandas as pd
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.callbacks import ModelCheckpoint, LearningRateScheduler
+
+(X_train,Y_train), (X_test, Y_test) = tf.keras.datasets.cifar10.load_data()
+"""
+压缩维度
+"""
+Y_train = np.squeeze(Y_train)
+Y_test = np.squeeze(Y_test)
+
+X_train = X_train/255.0
+X_test = X_test/255.0
+
+Y_train = np.eye(10)[Y_train]
+Y_test = np.eye(10)[Y_test]
+
+# Learning Rate Schedule
+def lr_schedule(epoch):
+    lr = 1e-3
+    if epoch > 180:
+        lr *= 0.5e-3
+    elif epoch > 160:
+        lr *= 1e-3
+    elif epoch > 120:
+        lr *= 1e-2
+    elif epoch > 80:
+        lr *= 1e-1
+    print('Learning rate: ', lr)
+    return lr
+	
+def building_block(X, filter_size, filters, stride=1):
+
+    # Save the input value for shortcut
+    X_shortcut = X
+
+    # Reshape shortcut for later adding if dimensions change
+    if stride > 1:
+
+        X_shortcut = tf.keras.layers.Conv2D(filters, (1, 1), strides=stride, padding='same')(X_shortcut)
+        X_shortcut = tf.keras.layers.BatchNormalization(axis=3)(X_shortcut)
+
+    # First layer of the block
+    X = tf.keras.layers.Conv2D(filters, kernel_size = filter_size, strides=stride, padding='same')(X)
+    X = tf.keras.layers.BatchNormalization(axis=3)(X)
+    X = tf.keras.layers.Activation('relu')(X)
+
+    # Second layer of the block
+    X = tf.keras.layers.Conv2D(filters, kernel_size = filter_size, strides=(1, 1), padding='same')(X)
+    X = tf.keras.layers.BatchNormalization(axis=3)(X)
+    X = tf.keras.layers.add([X, X_shortcut])  # Add shortcut value to main path
+    X = tf.keras.layers.Activation('relu')(X)
+
+    return X
+	
+X_input = tf.keras.layers.Input(shape = (32,32,3))
+
+# Stage 1
+X = tf.keras.layers.Conv2D(filters=16, kernel_size=3, strides=(1, 1), padding='same')(X_input)
+X = tf.keras.layers.BatchNormalization(axis=3)(X)
+X = tf.keras.layers.Activation('relu')(X)
+
+# Stage 2 
+X = building_block(X, filter_size=3, filters=16, stride=1)
+X = building_block(X, filter_size=3, filters=16, stride=1)
+X = building_block(X, filter_size=3, filters=16, stride=1)
+X = building_block(X, filter_size=3, filters=16, stride=1)
+X = building_block(X, filter_size=3, filters=16, stride=1)
+
+# Stage 3 
+X = building_block(X, filter_size=3, filters=32, stride=2)  # dimensions change (stride=2)
+X = building_block(X, filter_size=3, filters=32, stride=1)
+X = building_block(X, filter_size=3, filters=32, stride=1)
+X = building_block(X, filter_size=3, filters=32, stride=1)
+X = building_block(X, filter_size=3, filters=32, stride=1)
+
+# Stage 4 
+X = building_block(X, filter_size=3, filters=64, stride=2)  # dimensions change (stride=2)
+X = building_block(X, filter_size=3, filters=64, stride=1)
+X = building_block(X, filter_size=3, filters=64, stride=1)
+X = building_block(X, filter_size=3, filters=64, stride=1)
+X = building_block(X, filter_size=3, filters=64, stride=1)
+
+# Average pooling and output layer
+X = tf.keras.layers.GlobalAveragePooling2D()(X)
+
+X = tf.keras.layers.Dense(10, activation='softmax')(X)
+
+# Create model
+resnet32_model = tf.keras.models.Model(inputs=X_input, outputs=X, name="ResNet32")
+
+resnet32_opt = tf.keras.optimizers.Adam(lr=lr_schedule(0))
+
+#编译模型
+resnet32_model.compile(optimizer=resnet32_opt,loss='categorical_crossentropy',metrics=['accuracy'])
+
+datagen = ImageDataGenerator(
+        # set input mean to 0 over the dataset
+        featurewise_center=False,
+        # set each sample mean to 0
+        samplewise_center=False,
+        # divide inputs by std of dataset
+        featurewise_std_normalization=False,
+        # divide each input by its std
+        samplewise_std_normalization=False,
+        # apply ZCA whitening
+        zca_whitening=False,
+        # epsilon for ZCA whitening
+        zca_epsilon=1e-06,
+        # randomly rotate images in the range (deg 0 to 180)
+        rotation_range=0,
+        # randomly shift images horizontally
+        width_shift_range=0.1,
+        # randomly shift images vertically
+        height_shift_range=0.1,
+        # set range for random shear
+        shear_range=0.,
+        # set range for random zoom
+        zoom_range=0.,
+        # set range for random channel shifts
+        channel_shift_range=0.,
+        # set mode for filling points outside the input boundaries
+        fill_mode='nearest',
+        # value used for fill_mode = "constant"
+        cval=0.,
+        # randomly flip images
+        horizontal_flip=True,
+        # randomly flip images
+        vertical_flip=False,
+        # set rescaling factor (applied before any other transformation)
+        rescale=None,
+        # set function that will be applied on each input
+        preprocessing_function=None,
+        # image data format, either "channels_first" or "channels_last"
+        data_format=None,
+        # fraction of images reserved for validation (strictly between 0 and 1)
+        validation_split=0.0)
+		
+lr_scheduler = LearningRateScheduler(lr_schedule)
+callbacks = [lr_scheduler]
+
+batch_sizes = 250000
+
+resnet32_model.fit_generator(datagen.flow(X_train, Y_train,batch_size = batch_sizes),
+                                epochs=1000,
+                                steps_per_epoch=X_train.shape[0]/batch_sizes,
+                                validation_data = (X_test,Y_test),
+                                callbacks = callbacks)
