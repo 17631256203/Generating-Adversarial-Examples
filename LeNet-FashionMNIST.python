@@ -39,7 +39,7 @@ model.add(Dropout(0.2))
 model.add(MaxPooling2D((2,2)))  #池化核大小[None,14,14,5]
 model.add(tf.keras.layers.BatchNormalization()) 
 
-model.add(Conv2D(16,(3,3),strides=(1,1),data_format='channels_last',padding='same',activation='relu',kernel_initializer='uniform'))#[None,12,12,16]
+model.add(Conv2D(16,(3,3),strides=(2,1),data_format='channels_last',padding='same',activation='relu',kernel_initializer='uniform'))#[None,12,12,16]
 model.add(Dropout(0.2))
 model.add(MaxPooling2D(2,2))  #output_shape=[None,6,6,16]
 model.add(tf.keras.layers.BatchNormalization()) 
@@ -65,7 +65,7 @@ model.compile(optimizer=tf.keras.optimizers.Adam(lr=lr_schedule(0)),loss='catego
 lr_scheduler = tf.keras.callbacks.LearningRateScheduler(lr_schedule)
 
 if __name__ == '__main__':
-	model.fit(x=X_train,y=Y_train,batch_size=128,epochs=1000,validation_data=(X_test,Y_test),callbacks=[lr_scheduler])
+	model.fit(x=X_train,y=Y_train,batch_size=128,epochs=100000,validation_data=(X_test,Y_test),callbacks=[lr_scheduler])
 	#模型评估
 	loss,acc=model.evaluate(x=X_test,y=Y_test)
 	print("loss:{}===acc:{}".format(loss,acc))
