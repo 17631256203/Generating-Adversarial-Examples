@@ -1,0 +1,97 @@
+from tensorflow.keras.utils import plot_model
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import tensorflow as tf
+import numpy as np
+import pandas as pd
+import tensorflow.keras.datasets.fashion_mnist as fmnist
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv2D,Dropout,MaxPool2D,Flatten,Dense,BatchNormalization,Activation
+
+dataset=fmnist.load_data()   
+(X_train,Y_train),(X_test,Y_test)=dataset
+
+
+X_train = X_train/255.0
+X_test = X_test/255.0
+
+Y_train = np.eye(10)[Y_train]
+Y_test = np.eye(10)[Y_test]
+
+def lr_schedule(epoch):
+    lr = 1e-3
+    if epoch > 150:
+        lr *= 0.5e-3
+    elif epoch > 80:
+        lr *= 1e-3
+    elif epoch > 40:
+        lr *= 1e-2
+    elif epoch > 20:
+        lr *= 1e-1
+    print('Learning rate: ', lr)
+    return lr
+
+VGG_model = Sequential()
+VGG_model.add(Conv2D(filters=64, kernel_size=(3, 3), padding='same',input_shape=(28,28,1)))  # 卷积层1
+VGG_model.add(BatchNormalization() ) # BN层1
+VGG_model.add(Activation('relu') ) # 激活层1
+VGG_model.add(Conv2D(filters=64, kernel_size=(3, 3), padding='same', ))
+VGG_model.add(BatchNormalization()  )# BN层1
+VGG_model.add(Activation('relu')  )# 激活层1
+VGG_model.add(MaxPool2D(pool_size=(2, 2), strides=2, padding='same'))
+VGG_model.add(Dropout(0.2))  # dropout层
+VGG_model.add(Conv2D(filters=128, kernel_size=(3, 3), padding='same'))
+VGG_model.add(BatchNormalization() ) # BN层1
+VGG_model.add(Activation('relu') ) # 激活层1
+VGG_model.add(Conv2D(filters=128, kernel_size=(3, 3), padding='same'))
+VGG_model.add(BatchNormalization() ) # BN层1
+VGG_model.add(Activation('relu') ) # 激活层1
+VGG_model.add(MaxPool2D(pool_size=(2, 2), strides=2, padding='same'))
+VGG_model.add(Dropout(0.2))  # dropout层
+VGG_model.add(Conv2D(filters=256, kernel_size=(3, 3), padding='same'))
+VGG_model.add(BatchNormalization() ) # BN层1
+VGG_model.add(Activation('relu') ) # 激活层1
+VGG_model.add(Conv2D(filters=256, kernel_size=(3, 3), padding='same'))
+VGG_model.add(BatchNormalization())  # BN层1
+VGG_model.add(Activation('relu')  )# 激活层1
+VGG_model.add(Conv2D(filters=256, kernel_size=(3, 3), padding='same'))
+VGG_model.add(BatchNormalization())
+VGG_model.add(Activation('relu'))
+VGG_model.add(MaxPool2D(pool_size=(2, 2), strides=2, padding='same'))
+VGG_model.add(Dropout(0.2))
+VGG_model.add(Conv2D(filters=512, kernel_size=(3, 3), padding='same'))
+VGG_model.add(BatchNormalization() ) # BN层1
+VGG_model.add(Activation('relu') ) # 激活层1
+VGG_model.add(Conv2D(filters=512, kernel_size=(3, 3), padding='same'))
+VGG_model.add(BatchNormalization()) # BN层1
+VGG_model.add(Activation('relu') ) # 激活层1
+VGG_model.add(Conv2D(filters=512, kernel_size=(3, 3), padding='same'))
+VGG_model.add(BatchNormalization())
+VGG_model.add(Activation('relu'))
+VGG_model.add(MaxPool2D(pool_size=(2, 2), strides=2, padding='same'))
+VGG_model.add(Dropout(0.2))
+VGG_model.add(Conv2D(filters=512, kernel_size=(3, 3), padding='same'))
+VGG_model.add(BatchNormalization() ) # BN层1
+VGG_model.add(Activation('relu') ) # 激活层1
+VGG_model.add(Conv2D(filters=512, kernel_size=(3, 3), padding='same'))
+VGG_model.add(BatchNormalization())  # BN层1
+VGG_model.add(Activation('relu'))  # 激活层1
+VGG_model.add(Conv2D(filters=512, kernel_size=(3, 3), padding='same'))
+VGG_model.add(BatchNormalization())
+VGG_model.add(Activation('relu'))
+VGG_model.add(MaxPool2D(pool_size=(2, 2), strides=2, padding='same'))
+VGG_model.add(Dropout(0.2))
+VGG_model.add(Flatten())
+VGG_model.add(Dense(512, activation='relu'))
+VGG_model.add(Dropout(0.2))
+VGG_model.add(Dense(512, activation='relu'))
+VGG_model.add(Dropout(0.2))
+VGG_model.add(Dense(10, activation='softmax'))
+#打印参数
+VGG_model.summary()
+
+#编译模型
+VGG_model.compile(optimizer=tf.keras.optimizers.Adam(),loss='categorical_crossentropy',metrics=['accuracy'])
+lr_scheduler = tf.keras.callbacks.LearningRateScheduler(lr_schedule)
+
+VGG_model.fit(x=X_train,y=Y_train,batch_size=128,epochs=1000000,validation_data = (X_test,Y_test))
