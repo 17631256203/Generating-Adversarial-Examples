@@ -1,0 +1,65 @@
+from tensorflow.keras.utils import plot_model
+import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
+import tensorflow as tf
+import numpy as np
+import pandas as pd
+import tensorflow.keras.datasets.fashion_mnist as fmnist
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Conv2D,Dropout,MaxPool2D,Flatten,Dense,BatchNormalization,Activation
+
+
+dataset=fmnist.load_data()   
+(X_train,Y_train),(X_test,Y_test)=dataset
+#X_train=X_train.reshape(-1,28,28,1)
+#[None,width,height,channels]
+#X_test=X_test.reshape(-1,28,28,1)   
+
+X_train = X_train/255.0
+X_test = X_test/255.0
+
+Y_train = np.eye(10)[Y_train]
+Y_test = np.eye(10)[Y_test]
+
+def lr_schedule(epoch):
+    lr = 1e-3
+    if epoch > 150:
+        lr *= 0.5e-3
+    elif epoch > 80:
+        lr *= 1e-3
+    elif epoch > 40:
+        lr *= 1e-2
+    elif epoch > 20:
+        lr *= 1e-1
+    print('Learning rate: ', lr)
+    return lr
+	
+Alex_model=Sequential()
+Alex_model.add(Conv2D(filters=96, kernel_size=(3, 3),input_shape=(28,28,1)))
+Alex_model.add(BatchNormalization())
+Alex_model.add(Activation('relu'))
+Alex_model.add(MaxPool2D(pool_size=(3, 3), strides=2))
+Alex_model.add(Conv2D(filters=256, kernel_size=(3, 3)))
+Alex_model.add(BatchNormalization())
+Alex_model.add(Activation('relu'))
+Alex_model.add(MaxPool2D(pool_size=(3, 3), strides=2))
+Alex_model.add(Conv2D(filters=384, kernel_size=(3, 4), padding='same',activation='relu'))
+Alex_model.add(Conv2D(filters=384, kernel_size=(3, 3), padding='same',activation='relu'))
+Alex_model.add(Conv2D(filters=256, kernel_size=(3, 3), padding='same',activation='relu'))
+Alex_model.add(MaxPool2D(pool_size=(3, 3), strides=2))
+Alex_model.add(Flatten())
+Alex_model.add(Dense(2048, activation='relu'))
+Alex_model.add(Dropout(0.5))
+Alex_model.add(Dense(2048, activation='relu'))
+Alex_model.add(Dropout(0.5))
+Alex_model.add(Dense(10, activation='softmax'))
+#打印参数
+Alex_model.summary()
+
+#编译模型
+Alex_model.compile(optimizer=tf.keras.optimizers.Adam(),loss='categorical_crossentropy',metrics=['accuracy'])
+lr_scheduler = tf.keras.callbacks.LearningRateScheduler(lr_schedule)
+
+Alex_model.fit(x=X_train,y=Y_train,batch_size=256,epochs=100,validation_data = (X_test,Y_test))
+
+
